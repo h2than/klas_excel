@@ -120,21 +120,20 @@ class MyWindow(QMainWindow, Ui_MyWindow):
             for row in range(1, total_rows):
                 cell_room_value = worksheet.Cells(row, 4).Value
                 cell_new_value = worksheet.Cells(row, 1).Value
+                is_ok = any(name in cell_room_value for name in room)
 
-                # Check if any of the room values in the list do not exist in cell_room_value
-                if any(name not in cell_room_value for name in room):
-                    rows_to_delete.append(row)
-
-                # Check if the numeric part of cell_new_value is greater than new
-                elif int(cell_new_value[2:]) > int(new):
-                    for column_index in range(1, total_columns):
-                        cell = worksheet.Cells(row, column_index)
-                        cell.Font.Color = 255  # Red
-                        cell.Font.Size = 20
-                else :
-                    for column_index in range(1, total_columns):
-                        cell = worksheet.Cells(row, column_index)
-                        cell.Font.Size = 20  # Set the font size for all cells in the row                
+                if is_ok:
+                    if int(cell_new_value[2:]) > int(new):
+                        for column_index in range(1, total_columns):
+                            cell = worksheet.Cells(row, column_index)
+                            cell.Font.Color = 255  # Red
+                            cell.Font.Size = 20
+                    else :
+                        for column_index in range(1, total_columns):
+                            cell = worksheet.Cells(row, column_index)
+                            cell.Font.Size = 20
+                else:
+                    rows_to_delete.append(row)               
                 
             for row_index in reversed(rows_to_delete):
                 worksheet.Rows(row_index).Delete()
