@@ -21,7 +21,7 @@ class MyWindow(QMainWindow, Ui_MyWindow):
     def populate_printer_list(self):
         printers = [printer[2] for printer in win32print.EnumPrinters(2)]
         self.printer_combo.addItems(printers)
-
+        
         settings = QSettings('MyApp', 'MyWindow')
         last_printer = settings.value('last_printer', type=str)
         if last_printer in printers:
@@ -77,7 +77,10 @@ class MyWindow(QMainWindow, Ui_MyWindow):
 
     def print_excel_file(self):
         try:
-            room = self.room_text_label.text()
+            rooms = self.room_text_label.text()
+            room = rooms.split()
+            if ',' in rooms :
+                room = rooms.split(',')
             new = self.book_num_text_label.text()
 
             printer_name = self.printer_combo.currentText()
@@ -108,21 +111,29 @@ class MyWindow(QMainWindow, Ui_MyWindow):
             for column_index in sorted(columns_to_delete, reverse=True):
                 worksheet.Columns(column_index).Delete()
 
-            total_column = worksheet.UsedRange.Columns.Count
+            total_rows = worksheet.UsedRange.Rows.Count + 1
+            total_columns = worksheet.UsedRange.Columns.Count + 1
             rows_to_delete = []
+                
+            for row in range(1, total_rows):
+                cell_room_value = worksheet.Cells(row, 4).Value
+                cell_new_value = worksheet.Cells(row, 1).Value
 
-            for cell in worksheet.UsedRange:
-                cell_room_value = worksheet.Cells(cell.Row, 4).Value
-                cell_new_value = worksheet.Cells(cell.Row, 1).Value
+                # Check if any of the room values in the list do not exist in cell_room_value
+                if any(name not in cell_room_value for name in room):
+                    rows_to_delete.append(row)
 
-                if room not in cell_room_value:
-                    rows_to_delete.append(cell.Row)
-
-                if int(cell_new_value[2:]) > int(new):
-                    for column_index in range(1, total_column + 1):
+                # Check if the numeric part of cell_new_value is greater than new
+                elif int(cell_new_value[2:]) > int(new):
+                    for column_index in range(1, total_columns):
+                        cell = worksheet.Cells(row, column_index)
                         cell.Font.Color = 255  # Red
-                cell.Font.Size = 20  # Set the font size for all cells
-
+                        cell.Font.Size = 20
+                else :
+                    for column_index in range(1, total_columns):
+                        cell = worksheet.Cells(row, column_index)
+                        cell.Font.Size = 20  # Set the font size for all cells in the row                
+                
             for row_index in reversed(rows_to_delete):
                 worksheet.Rows(row_index).Delete()
 
