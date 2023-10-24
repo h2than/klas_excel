@@ -51,6 +51,8 @@ class MyWindow(QMainWindow, Ui_MyWindow):
         last_room_text = settings.value('last_room_text', type=str)
         if last_room_text:
             self.room_text_label.setText(last_room_text)
+        
+        self.room_text_label.textChanged.connect(self.save_room_text)
 
     def save_room_text(self):
         room_text = self.room_text_label.text()
