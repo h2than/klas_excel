@@ -81,8 +81,6 @@ class MyWindow(QMainWindow, Ui_MyWindow):
         try:
             rooms = self.room_text_label.text()
             room = rooms.split()
-            if ',' in rooms :
-                room = rooms.split(',')
             new = self.book_num_text_label.text()
 
             printer_name = self.printer_combo.currentText()
@@ -94,14 +92,9 @@ class MyWindow(QMainWindow, Ui_MyWindow):
 
             workbook = excel.Workbooks.Open(self.xlsx_path)
             output_file_path = os.path.join(os.path.expanduser("~/Desktop"), "제공자료.xls")
-            self.xlsx_path = output_file_path
 
-            if os.path.exists(self.xlsx_path):
-                os.remove(self.xlsx_path)
-
-            workbook.SaveAs(self.xlsx_path)
-            workbook.Close(SaveChanges=False)
-            workbook = excel.Workbooks.Open(self.xlsx_path)
+            if os.path.exists(output_file_path):
+                os.remove(output_file_path)
 
             for sheet in workbook.Sheets:
                 if not sheet == workbook.Worksheets[0]:
@@ -113,32 +106,38 @@ class MyWindow(QMainWindow, Ui_MyWindow):
             for column_index in sorted(columns_to_delete, reverse=True):
                 worksheet.Columns(column_index).Delete()
 
-            total_rows = worksheet.UsedRange.Rows.Count + 1
-            total_columns = worksheet.UsedRange.Columns.Count + 1
-            rows_to_delete = []
-                
-            for row in range(1, total_rows):
-                cell_room_value = worksheet.Cells(row, 4).Value
-                cell_new_value = worksheet.Cells(row, 1).Value
-                is_ok = any(name in cell_room_value for name in room)
+            worksheet.UsedRange.Sort(worksheet.UsedRange.Columns("D"), Header=1)
 
-                if is_ok:
-                    if int(cell_new_value[2:]) > int(new):
-                        for column_index in range(1, total_columns):
-                            cell = worksheet.Cells(row, column_index)
-                            cell.Font.Color = 255  # Red
-                            cell.Font.Size = 20
-                    else :
-                        for column_index in range(1, total_columns):
-                            cell = worksheet.Cells(row, column_index)
-                            cell.Font.Size = 20
-                else:
-                    rows_to_delete.append(row)               
+            start = None
+            end = None
+            
+            for row in range(1, worksheet.UsedRange.Rows.Count + 1):
+                cell_room_value = worksheet.Cells(row, 4).Value
                 
-            for row_index in reversed(rows_to_delete):
-                worksheet.Rows(row_index).Delete()
+                # 조건 1: "room" 문자열 포함 여부 확인
+                condition1 = any(name in cell_room_value for name in room)
+                
+                if condition1 and start is None:
+                    start = row
+                elif start is not None and not condition1:
+                    end = row - 1
+                    break
 
             worksheet.Columns(4).Delete()
+
+            worksheet.Range(worksheet.Cells(1, 1), worksheet.Cells(start - 1, 4)).EntireRow.Delete()
+            worksheet.Range(worksheet.Cells(end + 1, 1), worksheet.Cells(worksheet.UsedRange.Rows.Count + 1, 4)).EntireRow.Delete()
+
+            worksheet.UsedRange.Sort(worksheet.UsedRange.Columns("C"), Header=1)
+            
+            for row in worksheet.UsedRange.Rows.Count + 1 :
+                cell_new_value = worksheet.Cells(row, 1).Value
+                for column_index in range(1, 4):
+                    cell = worksheet.Cells(row, column_index)
+                    if int(cell_new_value[2:]) > int(new):
+                        cell.Font.Color = 255
+                    cell.Font.Size = 20
+
 
             worksheet.Rows.AutoFit()
             worksheet.Columns.AutoFit()
@@ -154,7 +153,7 @@ class MyWindow(QMainWindow, Ui_MyWindow):
             worksheet.PageSetup.FitToPagesWide = 1
             worksheet.PageSetup.FitToPagesTall = 1
 
-            workbook.Save()
+            workbook.SaveAs(output_file_path)
             worksheet.PrintOut(ActivePrinter=printer_name)
             workbook.Close(SaveChanges=True)
             excel.Quit()
