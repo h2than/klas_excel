@@ -127,9 +127,10 @@ class MyWindow(QMainWindow, Ui_MyWindow):
             if start is not None and end is not None:
                 worksheet.Range(worksheet.Cells(1, 1), worksheet.Cells(start - 1, 4)).EntireRow.Delete()
                 worksheet.Range(worksheet.Cells(end + 1, 1), worksheet.Cells(worksheet.UsedRange.Rows.Count + 1, 4)).EntireRow.Delete()
-            else :
+            
+            if end is None and start is None :
                 worksheet.Range(worksheet.Cells(1, 1), worksheet.Cells(worksheet.UsedRange.Rows.Count + 1, 4)).EntireRow.Delete()
-                self.show_message("자료실의 제공자료가 존재하지 않습니다.")
+                self.show_message("해당 자료실의 제공자료가 존재하지 않습니다.")
                 workbook.Close(SaveChanges=False)
                 excel.Quit()
                 return
@@ -160,7 +161,7 @@ class MyWindow(QMainWindow, Ui_MyWindow):
             worksheet.PageSetup.FitToPagesTall = 1
 
             workbook.SaveAs(output_file_path)
-            # worksheet.PrintOut(ActivePrinter=printer_name)
+            worksheet.PrintOut(ActivePrinter=printer_name)
             workbook.Close(SaveChanges=False)
             excel.Quit()
             self.show_message("작업이 완료되었습니다.")
