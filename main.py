@@ -125,8 +125,9 @@ class MyWindow(QMainWindow, Ui_MyWindow):
 
             worksheet.Columns(4).Delete()
 
-            worksheet.Range(worksheet.Cells(1, 1), worksheet.Cells(start - 1, 4)).EntireRow.Delete()
-            worksheet.Range(worksheet.Cells(end + 1, 1), worksheet.Cells(worksheet.UsedRange.Rows.Count + 1, 4)).EntireRow.Delete()
+            if start is not None and end is not None:
+                worksheet.Range(worksheet.Cells(1, 1), worksheet.Cells(start - 1, 4)).EntireRow.Delete()
+                worksheet.Range(worksheet.Cells(end + 1, 1), worksheet.Cells(worksheet.UsedRange.Rows.Count + 1, 4)).EntireRow.Delete()
 
             worksheet.UsedRange.Sort(worksheet.UsedRange.Columns("C"), Header=1)
             
