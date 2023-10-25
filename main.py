@@ -5,9 +5,11 @@ import win32print
 from PyQt5.QtWidgets import QMainWindow, QApplication, QFileDialog, QMessageBox, QPushButton
 from PyQt5.QtCore import QSettings
 from gui import Ui_MyWindow
+from selenium import webdriver
 
 class MyWindow(QMainWindow, Ui_MyWindow):
     xlsx_path = ""
+    driver = None
 
     def __init__(self):
         super().__init__()
@@ -17,6 +19,25 @@ class MyWindow(QMainWindow, Ui_MyWindow):
         self.populate_printer_list()
         self.populate_book_number()
         self.room_select()
+
+    def find_chrome_profile():
+        user_data_path = os.path.expanduser("~")  # 현재 사용자 홈 디렉토리
+        chrome_user_data_path = os.path.join(user_data_path, 'AppData', 'Local', 'Google', 'Chrome', 'User Data')
+        
+        profile_name = os.listdir(chrome_user_data_path)[0] if os.path.exists(chrome_user_data_path) else "Default"
+        
+        profile_path = os.path.join(chrome_user_data_path, profile_name)
+        return profile_path
+    
+    def connect_chrome_session(self):
+        try :
+            chrome_profile_path = self.find_chrome_profile()
+            chrome_options = webdriver.ChromeOptions()
+            chrome_options.add_argument(f'--user-data-dir={chrome_profile_path}')
+            self.driver = webdriver.Chrome(options=chrome_options)
+        except:
+            self.show_message("크롬 Klas에 접속에 실패 했습니다.")
+            return False
 
     def populate_printer_list(self):
         printers = [printer[2] for printer in win32print.EnumPrinters(2)]
@@ -79,6 +100,9 @@ class MyWindow(QMainWindow, Ui_MyWindow):
 
     def print_excel_file(self):
         try:
+            if self.connect_chrome_session(self):
+                return
+            
             rooms = self.room_text_label.text()
             room = rooms.split()
             new = int(self.book_num_text_label.text())
