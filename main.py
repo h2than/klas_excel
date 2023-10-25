@@ -81,7 +81,7 @@ class MyWindow(QMainWindow, Ui_MyWindow):
         try:
             rooms = self.room_text_label.text()
             room = rooms.split()
-            new = self.book_num_text_label.text()
+            new = int(self.book_num_text_label.text())
 
             printer_name = self.printer_combo.currentText()
             if not hasattr(self, 'xlsx_path'):
@@ -114,7 +114,6 @@ class MyWindow(QMainWindow, Ui_MyWindow):
             for row in range(1, worksheet.UsedRange.Rows.Count + 1):
                 cell_room_value = worksheet.Cells(row, 4).Value
                 
-                # 조건 1: "room" 문자열 포함 여부 확인
                 condition1 = any(name in cell_room_value for name in room)
                 
                 if condition1 and start is None:
@@ -128,17 +127,23 @@ class MyWindow(QMainWindow, Ui_MyWindow):
             if start is not None and end is not None:
                 worksheet.Range(worksheet.Cells(1, 1), worksheet.Cells(start - 1, 4)).EntireRow.Delete()
                 worksheet.Range(worksheet.Cells(end + 1, 1), worksheet.Cells(worksheet.UsedRange.Rows.Count + 1, 4)).EntireRow.Delete()
+            else :
+                worksheet.Range(worksheet.Cells(1, 1), worksheet.Cells(worksheet.UsedRange.Rows.Count + 1, 4)).EntireRow.Delete()
+                self.show_message("자료실의 제공자료가 존재하지 않습니다.")
+                workbook.Close(SaveChanges=False)
+                excel.Quit()
+                return
 
             worksheet.UsedRange.Sort(worksheet.UsedRange.Columns("C"), Header=1)
             
-            for row in worksheet.UsedRange.Rows.Count + 1 :
-                cell_new_value = worksheet.Cells(row, 1).Value
+            for row in range(1, worksheet.UsedRange.Rows.Count + 1):
+                rowA = worksheet.Cells(row, 1).Value
+                cell_new_value = int(rowA[2:])
                 for column_index in range(1, 4):
                     cell = worksheet.Cells(row, column_index)
-                    if int(cell_new_value[2:]) > int(new):
+                    if cell_new_value >= new :
                         cell.Font.Color = 255
                     cell.Font.Size = 20
-
 
             worksheet.Rows.AutoFit()
             worksheet.Columns.AutoFit()
@@ -155,12 +160,16 @@ class MyWindow(QMainWindow, Ui_MyWindow):
             worksheet.PageSetup.FitToPagesTall = 1
 
             workbook.SaveAs(output_file_path)
-            worksheet.PrintOut(ActivePrinter=printer_name)
-            workbook.Close(SaveChanges=True)
+            # worksheet.PrintOut(ActivePrinter=printer_name)
+            workbook.Close(SaveChanges=False)
             excel.Quit()
             self.show_message("작업이 완료되었습니다.")
         except Exception as e:
             self.show_message(str(e))
+            workbook.SaveAs(output_file_path)
+            workbook.Close(SaveChanges=False)
+            excel.Quit()
+
 
 if __name__ == '__main__':
     MyApp = QApplication(sys.argv)
