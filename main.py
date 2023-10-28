@@ -38,6 +38,9 @@ class MyWindow(QMainWindow, Ui_MyWindow):
         except:
             self.show_message("크롬 Klas에 접속에 실패 했습니다.")
             return False
+    
+    def download_excel(self):
+        self.driver.get("https://klas.jeonju.go.kr/klas3/Admin/")
 
     def populate_printer_list(self):
         printers = [printer[2] for printer in win32print.EnumPrinters(2)]
@@ -124,6 +127,7 @@ class MyWindow(QMainWindow, Ui_MyWindow):
                 if not sheet == workbook.Worksheets[0]:
                     sheet.Delete()
             worksheet = workbook.Worksheets[0]
+            worksheet.Cells.ClearFormats()
             worksheet.Rows("1:3").EntireRow.Delete()
 
             columns_to_delete = [1, 2, 3, 8, 9, 10, 11]
@@ -136,8 +140,7 @@ class MyWindow(QMainWindow, Ui_MyWindow):
             end = None
             
             for row in range(1, worksheet.UsedRange.Rows.Count + 1):
-                cell_room_value = worksheet.Cells(row, 4).Value
-                
+                cell_room_value = worksheet.Cells(row, 4).Value                
                 condition1 = any(name in cell_room_value for name in room)
                 
                 if condition1 and start is None:
@@ -145,15 +148,20 @@ class MyWindow(QMainWindow, Ui_MyWindow):
                 elif start is not None and not condition1:
                     end = row - 1
                     break
+                
+                if row is worksheet.UsedRange.Rows.Count :
+                    end = row -1
 
+            worksheet.Columns(5).ClearFormats()
+            worksheet.Columns(5).Delete()
+            worksheet.Columns(4).ClearFormats()
             worksheet.Columns(4).Delete()
 
             if start is not None and end is not None:
-                worksheet.Range(worksheet.Cells(1, 1), worksheet.Cells(start - 1, 4)).EntireRow.Delete()
-                worksheet.Range(worksheet.Cells(end + 1, 1), worksheet.Cells(worksheet.UsedRange.Rows.Count + 1, 4)).EntireRow.Delete()
+                worksheet.Range(worksheet.Cells(1, 1), worksheet.Cells(start - 1, 3)).EntireRow.Delete()
+                worksheet.Range(worksheet.Cells(end + 1, 1), worksheet.Cells(worksheet.UsedRange.Rows.Count + 1, 3)).EntireRow.Delete()
             
             if end is None and start is None :
-                worksheet.Range(worksheet.Cells(1, 1), worksheet.Cells(worksheet.UsedRange.Rows.Count + 1, 4)).EntireRow.Delete()
                 self.show_message("해당 자료실의 제공자료가 존재하지 않습니다.")
                 workbook.Close(SaveChanges=False)
                 excel.Quit()
@@ -184,14 +192,14 @@ class MyWindow(QMainWindow, Ui_MyWindow):
             worksheet.PageSetup.FitToPagesWide = 1
             worksheet.PageSetup.FitToPagesTall = 1
 
-            workbook.SaveAs(output_file_path)
+            # workbook.SaveAs(output_file_path)
             worksheet.PrintOut(ActivePrinter=printer_name)
             workbook.Close(SaveChanges=False)
             excel.Quit()
             self.show_message("작업이 완료되었습니다.")
         except Exception as e:
             self.show_message(str(e))
-            workbook.SaveAs(output_file_path)
+            # workbook.SaveAs(output_file_path)
             workbook.Close(SaveChanges=False)
             excel.Quit()
 
