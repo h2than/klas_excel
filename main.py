@@ -19,19 +19,14 @@ class MyWindow(QMainWindow, Ui_MyWindow):
         self.populate_printer_list()
         self.populate_book_number()
         self.room_select()
-
-    def find_chrome_profile():
-        user_data_path = os.path.expanduser("~")  # 현재 사용자 홈 디렉토리
-        chrome_user_data_path = os.path.join(user_data_path, 'AppData', 'Local', 'Google', 'Chrome', 'User Data')
-        
-        profile_name = os.listdir(chrome_user_data_path)[0] if os.path.exists(chrome_user_data_path) else "Default"
-        
-        profile_path = os.path.join(chrome_user_data_path, profile_name)
-        return profile_path
     
     def connect_chrome_session(self):
         try :
-            chrome_profile_path = self.find_chrome_profile()
+            user_data_path = os.path.expanduser("~")  # 현재 사용자 홈 디렉토리
+            chrome_user_data_path = os.path.join(user_data_path, 'AppData', 'Local', 'Google', 'Chrome', 'User Data')
+            profile_name = os.listdir(chrome_user_data_path)[0] if os.path.exists(chrome_user_data_path) else "Default"
+
+            chrome_profile_path = os.path.join(chrome_user_data_path, profile_name)
             chrome_options = webdriver.ChromeOptions()
             chrome_options.add_argument(f'--user-data-dir={chrome_profile_path}')
             self.driver = webdriver.Chrome(options=chrome_options)
@@ -102,10 +97,7 @@ class MyWindow(QMainWindow, Ui_MyWindow):
         msg_box.exec_()
 
     def print_excel_file(self):
-        try:
-            if self.connect_chrome_session(self):
-                return
-            
+        try:            
             rooms = self.room_text_label.text()
             room = rooms.split()
             new = int(self.book_num_text_label.text())
@@ -118,10 +110,6 @@ class MyWindow(QMainWindow, Ui_MyWindow):
             excel.DisplayAlerts = False
 
             workbook = excel.Workbooks.Open(self.xlsx_path)
-            output_file_path = os.path.join(os.path.expanduser("~/Desktop"), "제공자료.xls")
-
-            if os.path.exists(output_file_path):
-                os.remove(output_file_path)
 
             for sheet in workbook.Sheets:
                 if not sheet == workbook.Worksheets[0]:
@@ -134,10 +122,10 @@ class MyWindow(QMainWindow, Ui_MyWindow):
             for column_index in sorted(columns_to_delete, reverse=True):
                 worksheet.Columns(column_index).Delete()
 
-            worksheet.UsedRange.Sort(worksheet.UsedRange.Columns("D"), Header=1)
+            worksheet.UsedRange.Sort(worksheet.UsedRange.Columns("C"), Header=1)
 
             start = None
-            end = None
+            end = worksheet.UsedRange.Rows.Count + 1
             
             for row in range(1, worksheet.UsedRange.Rows.Count + 1):
                 cell_room_value = worksheet.Cells(row, 4).Value                
@@ -146,28 +134,24 @@ class MyWindow(QMainWindow, Ui_MyWindow):
                 if condition1 and start is None:
                     start = row
                 elif start is not None and not condition1:
-                    end = row - 1
+                    end = row
                     break
-                
-                if row is worksheet.UsedRange.Rows.Count :
-                    end = row -1
 
             worksheet.Columns(5).ClearFormats()
             worksheet.Columns(5).Delete()
             worksheet.Columns(4).ClearFormats()
             worksheet.Columns(4).Delete()
 
-            if start is not None and end is not None:
-                worksheet.Range(worksheet.Cells(1, 1), worksheet.Cells(start - 1, 3)).EntireRow.Delete()
-                worksheet.Range(worksheet.Cells(end + 1, 1), worksheet.Cells(worksheet.UsedRange.Rows.Count + 1, 3)).EntireRow.Delete()
-            
-            if end is None and start is None :
+            if start is None :
                 self.show_message("해당 자료실의 제공자료가 존재하지 않습니다.")
                 workbook.Close(SaveChanges=False)
                 excel.Quit()
                 return
-
-            worksheet.UsedRange.Sort(worksheet.UsedRange.Columns("C"), Header=1)
+            else :
+                if start > 2 :
+                    worksheet.Range(worksheet.Cells(1, 1), worksheet.Cells(start - 1, 3)).EntireRow.Delete()
+                if end < worksheet.UsedRange.Rows.Count + 1 :
+                    worksheet.Range(worksheet.Cells(end, 1), worksheet.Cells(worksheet.UsedRange.Rows.Count + 1, 3)).EntireRow.Delete()
             
             for row in range(1, worksheet.UsedRange.Rows.Count + 1):
                 rowA = worksheet.Cells(row, 1).Value
@@ -192,16 +176,13 @@ class MyWindow(QMainWindow, Ui_MyWindow):
             worksheet.PageSetup.FitToPagesWide = 1
             worksheet.PageSetup.FitToPagesTall = 1
 
-            # workbook.SaveAs(output_file_path)
+
             worksheet.PrintOut(ActivePrinter=printer_name)
             workbook.Close(SaveChanges=False)
             excel.Quit()
             self.show_message("작업이 완료되었습니다.")
         except Exception as e:
             self.show_message(str(e))
-            # workbook.SaveAs(output_file_path)
-            workbook.Close(SaveChanges=False)
-            excel.Quit()
 
 
 if __name__ == '__main__':
