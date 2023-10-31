@@ -6,10 +6,20 @@ from PyQt5.QtWidgets import QMainWindow, QApplication, QFileDialog, QMessageBox,
 from PyQt5.QtCore import QSettings
 from gui import Ui_MyWindow
 from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
+import glob
+import time
+
+import chromedriver_autoinstaller
 
 class MyWindow(QMainWindow, Ui_MyWindow):
     xlsx_path = ""
     driver = None
+    download_folder = os.path.expanduser("~/Downloads")
+    flag = True
 
     def __init__(self):
         super().__init__()
@@ -19,23 +29,63 @@ class MyWindow(QMainWindow, Ui_MyWindow):
         self.populate_printer_list()
         self.populate_book_number()
         self.room_select()
-    
-    def connect_chrome_session(self):
         try :
-            user_data_path = os.path.expanduser("~")  # 현재 사용자 홈 디렉토리
-            chrome_user_data_path = os.path.join(user_data_path, 'AppData', 'Local', 'Google', 'Chrome', 'User Data')
-            profile_name = os.listdir(chrome_user_data_path)[0] if os.path.exists(chrome_user_data_path) else "Default"
-
-            chrome_profile_path = os.path.join(chrome_user_data_path, profile_name)
-            chrome_options = webdriver.ChromeOptions()
-            chrome_options.add_argument(f'--user-data-dir={chrome_profile_path}')
-            self.driver = webdriver.Chrome(options=chrome_options)
+            chromedriver_autoinstaller.install()
         except:
-            self.show_message("크롬 Klas에 접속에 실패 했습니다.")
-            return False
-    
-    def download_excel(self):
-        self.driver.get("https://klas.jeonju.go.kr/klas3/Admin/")
+            pass
+
+    def connect_chrome_session(self):
+        chrome_options = webdriver.ChromeOptions()
+        chrome_options.add_experimental_option("prefs", {
+            "download.default_directory": self.download_folder,
+            "download.prompt_for_download": False,
+            "download.directory_upgrade": True,
+            "safebrowsing.enabled": True
+        })
+        chrome_options.add_argument("--headless")
+
+        self.driver = webdriver.Chrome(options=chrome_options)
+        self.driver.get("https://klas.jeonju.go.kr/klas3/OtherLoanReturn/Manager?menuId=010400&access_menuid=010400#content2")
+
+    def download_xls(self):
+        xls_element = WebDriverWait(self.driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, '//*[@id="otherLibManager_excel_btn_my"]'))
+        )
+        xls_element.send_keys(Keys.ENTER)
+        
+        reason = WebDriverWait(self.driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, '//*[@id="userInfoPrintReason"]'))
+        )
+        reason.send_keys("서가확인")
+        reason.send_keys(Keys.ENTER)
+        
+        download_btn = WebDriverWait(self.driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, '/html/body/div[14]/div[3]/div/button[1]'))
+        )
+        download_btn.send_keys(Keys.ENTER)
+
+    def get_xls(self):
+        wait_time = 30
+        while wait_time > 0 :
+            files = glob.glob(os.path.join(self.download_folder, '*'))
+            files.sort(key=os.path.getctime, reverse=True)
+
+            if files:
+                most_recent_file = files[0]
+                file_extension = os.path.splitext(most_recent_file)[-1]
+                
+                # 파일 확장자가 .xls 이며 파일 이름에 'download'가 포함되지 않는 경우에만 파일 경로 설정
+                if file_extension == '.xls' and 'download' not in os.path.basename(most_recent_file):
+                    self.xlsx_path = most_recent_file
+                    break
+            else:
+                time.sleep(1)
+                wait_time -= 1
+
+        if self.xlsx_path is "":
+            self.show_message("다운로드된 XLS 파일을 찾을 수 없거나 대기 시간을 초과했습니다.")
+            self.flag = False
+            return
 
     def populate_printer_list(self):
         printers = [printer[2] for printer in win32print.EnumPrinters(2)]
@@ -78,17 +128,6 @@ class MyWindow(QMainWindow, Ui_MyWindow):
         settings = QSettings('MyApp', 'MyWindow')
         settings.setValue('last_room_text', room_text)
 
-    def select_excel_file(self):
-        options = QFileDialog.Options()
-        file_dialog = QFileDialog()
-        file_dialog.setOptions(options)
-        download_folder = os.path.expanduser("~/Downloads")
-        file_dialog.setDirectory(download_folder)
-        file_path, _ = file_dialog.getOpenFileName(self, 'Select Excel File', '', 'Excel Files (*.xlsx *.xls)')
-
-        if file_path:
-            self.xlsx_path = file_path
-
     def show_message(self, text):
         msg_box = QMessageBox(self)
         msg_box.setIcon(QMessageBox.Information)
@@ -104,7 +143,8 @@ class MyWindow(QMainWindow, Ui_MyWindow):
 
             printer_name = self.printer_combo.currentText()
             if not hasattr(self, 'xlsx_path'):
-                raise Exception('No Excel file selected')
+                self.show_message('No Excel file selected')
+
             excel = win32com.client.Dispatch("Excel.Application")
             excel.Visible = False
             excel.DisplayAlerts = False
@@ -177,7 +217,7 @@ class MyWindow(QMainWindow, Ui_MyWindow):
             worksheet.PageSetup.FitToPagesTall = 1
 
 
-            worksheet.PrintOut(ActivePrinter=printer_name)
+            # worksheet.PrintOut(ActivePrinter=printer_name)
             workbook.Close(SaveChanges=False)
             excel.Quit()
             self.show_message("작업이 완료되었습니다.")
