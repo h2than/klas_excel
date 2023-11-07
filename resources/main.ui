@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>222</width>
-    <height>187</height>
+    <height>167</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -89,26 +89,13 @@
      <string>자료실 이름</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="select_file_button">
+   <widget class="QPushButton" name="print_button">
     <property name="geometry">
      <rect>
       <x>10</x>
       <y>110</y>
       <width>201</width>
-      <height>23</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>제공자료(xslx) 선택</string>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="print_button">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>140</y>
-      <width>201</width>
-      <height>23</height>
+      <height>31</height>
      </rect>
     </property>
     <property name="text">

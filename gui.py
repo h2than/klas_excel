@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MyWindow(object):
     def setupUi(self, MyWindow):
         MyWindow.setObjectName("MyWindow")
-        MyWindow.resize(222, 187)
+        MyWindow.resize(222, 167)
         self.centralwidget = QtWidgets.QWidget(MyWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.printer_combo = QtWidgets.QComboBox(self.centralwidget)
@@ -35,11 +35,8 @@ class Ui_MyWindow(object):
         self.room_label = QtWidgets.QLabel(self.centralwidget)
         self.room_label.setGeometry(QtCore.QRect(120, 60, 71, 16))
         self.room_label.setObjectName("room_label")
-        self.select_file_button = QtWidgets.QPushButton(self.centralwidget)
-        self.select_file_button.setGeometry(QtCore.QRect(10, 110, 201, 23))
-        self.select_file_button.setObjectName("select_file_button")
         self.print_button = QtWidgets.QPushButton(self.centralwidget)
-        self.print_button.setGeometry(QtCore.QRect(10, 140, 201, 23))
+        self.print_button.setGeometry(QtCore.QRect(10, 110, 201, 31))
         self.print_button.setObjectName("print_button")
         MyWindow.setCentralWidget(self.centralwidget)
         self.statusbar = QtWidgets.QStatusBar(MyWindow)
@@ -54,8 +51,17 @@ class Ui_MyWindow(object):
         MyWindow.setWindowTitle(_translate("MyWindow", "MainWindow"))
         self.printer_label.setText(_translate("MyWindow", "프린터를 선택해주세요"))
         self.new_label.setText(_translate("MyWindow", "신간 기준 번호"))
-        self.book_num_text_label.setText(_translate("MyWindow", ""))
-        self.room_text_label.setText(_translate("MyWindow", ""))
+        self.book_num_text_label.setText(_translate("MyWindow", "91000"))
+        self.room_text_label.setText(_translate("MyWindow", "아중일반실"))
         self.room_label.setText(_translate("MyWindow", "자료실 이름"))
-        self.select_file_button.setText(_translate("MyWindow", "제공자료(xslx) 선택"))
         self.print_button.setText(_translate("MyWindow", "프린트"))
+
+
+if __name__ == "__main__":
+    import sys
+    app = QtWidgets.QApplication(sys.argv)
+    MyWindow = QtWidgets.QMainWindow()
+    ui = Ui_MyWindow()
+    ui.setupUi(MyWindow)
+    MyWindow.show()
+    sys.exit(app.exec_())
