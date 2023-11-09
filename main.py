@@ -169,7 +169,7 @@ class MyWindow(QMainWindow, Ui_MyWindow):
                     cell = worksheet.Cells(row, column_index)
                     if cell_new_value >= new :
                         cell.Font.Color = 255
-                        cell.Font.Size = 20
+                    cell.Font.Size = 20
 
 
             worksheet.Rows.AutoFit()
