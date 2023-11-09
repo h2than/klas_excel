@@ -7,7 +7,8 @@ from PyQt5.QtCore import QSettings
 from gui import Ui_MyWindow
 import glob
 import time
-import traceback
+import re
+# import traceback
 
 import chromedriver_autoinstaller
 
@@ -98,6 +99,7 @@ class MyWindow(QMainWindow, Ui_MyWindow):
         msg_box.exec_()
 
     def print_excel_file(self):
+        self.print_button.setDisabled(True)
         try:
             self.get_xls()
         except:
@@ -157,20 +159,17 @@ class MyWindow(QMainWindow, Ui_MyWindow):
                 if end < total_rows :
                     worksheet.Range(worksheet.Cells(end, 1), worksheet.Cells(total_rows, 3)).EntireRow.Delete()
             
+            total_rows = worksheet.UsedRange.Rows.Count+1
+            worksheet.Cells.Font.Size = 20
+
             for row in range(1, total_rows):
                 rowA = worksheet.Cells(row, 1).Value
-
-                try:
-                    cell_new_value = int(rowA[2:])
-                except :
-                    break
-
-                for column_index in range(1, 4):
+                cell_new_value = int(rowA[2:])
+                
+                for column_index in range(1, 3):
                     cell = worksheet.Cells(row, column_index)
                     if cell_new_value >= new :
                         cell.Font.Color = 255
-                    cell.Font.Size = 20
-
 
             worksheet.Rows.AutoFit()
             worksheet.Columns.AutoFit()
@@ -202,14 +201,16 @@ class MyWindow(QMainWindow, Ui_MyWindow):
 
                 current_row += 1
 
+            #workbook.SaveAs(self.download_folder + "\\test.xls")
             workbook.Close(SaveChanges=False)
             excel.Quit()
             self.show_message("작업이 완료되었습니다.")
+            self.print_button.setDisabled(False)
         except Exception as e:
+            self.print_button.setDisabled(False)
             workbook.Close(SaveChanges=False)
             excel.Quit()
-            e = traceback.format_exc()
-            print(e)
+            # e = traceback.format_exc()
             self.show_message(str(e))
 
 
