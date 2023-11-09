@@ -2,16 +2,12 @@ import sys
 import os
 import win32com.client
 import win32print
-from PyQt5.QtWidgets import QMainWindow, QApplication, QFileDialog, QMessageBox, QPushButton
+from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox, QPushButton
 from PyQt5.QtCore import QSettings
 from gui import Ui_MyWindow
-from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
 import glob
 import time
+import traceback
 
 import chromedriver_autoinstaller
 
@@ -28,10 +24,6 @@ class MyWindow(QMainWindow, Ui_MyWindow):
         self.populate_printer_list()
         self.populate_book_number()
         self.room_select()
-        try:
-            self.get_xls()
-        except:
-            return
         try :
             chromedriver_autoinstaller.install()
         except:
@@ -106,6 +98,10 @@ class MyWindow(QMainWindow, Ui_MyWindow):
         msg_box.exec_()
 
     def print_excel_file(self):
+        try:
+            self.get_xls()
+        except:
+            pass
         try:        
             rooms = self.room_text_label.text()
             room = rooms.split()
@@ -163,12 +159,18 @@ class MyWindow(QMainWindow, Ui_MyWindow):
             
             for row in range(1, total_rows):
                 rowA = worksheet.Cells(row, 1).Value
-                cell_new_value = int(rowA[2:])
+
+                try:
+                    cell_new_value = int(rowA[2:])
+                except :
+                    break
+
                 for column_index in range(1, 4):
                     cell = worksheet.Cells(row, column_index)
                     if cell_new_value >= new :
                         cell.Font.Color = 255
-                    cell.Font.Size = 20
+                        cell.Font.Size = 20
+
 
             worksheet.Rows.AutoFit()
             worksheet.Columns.AutoFit()
@@ -200,11 +202,14 @@ class MyWindow(QMainWindow, Ui_MyWindow):
 
                 current_row += 1
 
-            # workbook.SaveAs(self.download_folder + "\\test.xls")
-            workbook.Close(SaveChanges=True)
+            workbook.Close(SaveChanges=False)
             excel.Quit()
             self.show_message("작업이 완료되었습니다.")
         except Exception as e:
+            workbook.Close(SaveChanges=False)
+            excel.Quit()
+            e = traceback.format_exc()
+            print(e)
             self.show_message(str(e))
 
 
