@@ -7,8 +7,8 @@ from PyQt5.QtCore import QSettings
 from gui import Ui_MyWindow
 import glob
 import time
-import re
-# import traceback
+import pandas as pd
+
 
 import chromedriver_autoinstaller
 
@@ -99,68 +99,39 @@ class MyWindow(QMainWindow, Ui_MyWindow):
         msg_box.exec_()
 
     def print_excel_file(self):
-        self.print_button.setDisabled(True)
-        try:
-            self.get_xls()
-        except:
-            pass
-        try:        
-            rooms = self.room_text_label.text()
-            room = rooms.split()
-            new = int(self.book_num_text_label.text())
-
-            printer_name = self.printer_combo.currentText()
-            if not hasattr(self, 'xlsx_path'):
-                self.show_message('No Excel file selected')
+        try :
+            self.print_button.setDisabled(True)
+            
+            try:
+                self.get_xls()
+            except:
+                self.print_button.setDisabled(False)
                 return
 
+            rooms = self.room_text_label.text()
+            room = str(rooms.split())
+            new = int(self.book_num_text_label.text())
+            printer_name = self.printer_combo.currentText()
+
+            data = pd.read_excel(self.xlsx_path, sheet_name='전체', skiprows=3)
+            subset = data.iloc[:, 3:7]
+            subset = subset[subset.iloc[:, 3].astype(str).str.contains(room, na=False)]
+            subset = subset.iloc[:, :-1]
+            subset = subset.sort_values(by=subset.columns[2])
+            self.xlsx_path = self.download_folder + "\\print_.xlsx"
+            if os.path.exists(self.xlsx_path):
+                os.remove(self.xlsx_path)
+            subset.to_excel(self.xlsx_path, index=False)
+            
             excel = win32com.client.Dispatch("Excel.Application")
             excel.Visible = False
             excel.DisplayAlerts = False
             workbook = excel.Workbooks.Open(self.xlsx_path)
-
-            for sheet in workbook.Sheets:
-                if not sheet == workbook.Worksheets[0]:
-                    sheet.Delete()
             worksheet = workbook.Worksheets[0]
-            worksheet.Cells.ClearFormats()
 
-            worksheet.Rows("1:3").EntireRow.Delete()
-            columns_to_delete = [1, 2, 3, 8, 9, 10, 11,12]
-            for column_index in sorted(columns_to_delete, reverse=True):
-                worksheet.Columns(column_index).Delete()
-
-            worksheet.UsedRange.Sort(worksheet.UsedRange.Columns("C"), Header=1)
-
-            start = None
-            total_rows = worksheet.UsedRange.Rows.Count + 1
-            end = total_rows
-            
-            for row in range(1, total_rows):
-                cell_room_value = worksheet.Cells(row, 4).Value                
-                condition1 = any(name in cell_room_value for name in room)
-                
-                if condition1 and start is None:
-                    start = row
-                elif start is not None and not condition1:
-                    end = row
-                    break
-
-            worksheet.Columns(4).Delete()
-
-            if start is None :
-                self.show_message("해당 자료실의 제공자료가 존재하지 않습니다.")
-                workbook.Close(SaveChanges=False)
-                excel.Quit()
-                return
-            else :
-                if start > 2 :
-                    worksheet.Range(worksheet.Cells(1, 1), worksheet.Cells(start - 1, 3)).EntireRow.Delete()
-                if end < total_rows :
-                    worksheet.Range(worksheet.Cells(end, 1), worksheet.Cells(total_rows, 3)).EntireRow.Delete()
-            
+            current_row = 1  # 현재 출력 중인 행
+            last_row = 1
             total_rows = worksheet.UsedRange.Rows.Count+1
-            worksheet.Cells.Font.Size = 20
 
             for row in range(1, total_rows):
                 rowA = worksheet.Cells(row, 1).Value
@@ -171,13 +142,9 @@ class MyWindow(QMainWindow, Ui_MyWindow):
                     if cell_new_value >= new :
                         cell.Font.Color = 255
 
+            worksheet.Cells.Font.Size = 20
             worksheet.Rows.AutoFit()
             worksheet.Columns.AutoFit()
-            
-            rows_per_page = 20  # A4 용지에 출력할 행 수
-            current_row = 1  # 현재 출력 중인 행
-            last_row = 1
-            
             worksheet.PageSetup.Orientation = 2
             worksheet.PageSetup.PaperSize = 9
             worksheet.PageSetup.FitToPagesWide = 1
@@ -194,14 +161,13 @@ class MyWindow(QMainWindow, Ui_MyWindow):
                     print_range.PrintOut(ActivePrinter=printer_name)
                     break
 
-                if current_row % rows_per_page == 0:
+                if current_row % 20 == 0:
                     print_range = worksheet.Range(worksheet.Cells(last_row, 1), worksheet.Cells(current_row, 3))
                     last_row = current_row
                     print_range.PrintOut(ActivePrinter=printer_name)
 
                 current_row += 1
 
-            #workbook.SaveAs(self.download_folder + "\\test.xls")
             workbook.Close(SaveChanges=False)
             excel.Quit()
             self.show_message("작업이 완료되었습니다.")
@@ -210,7 +176,6 @@ class MyWindow(QMainWindow, Ui_MyWindow):
             self.print_button.setDisabled(False)
             workbook.Close(SaveChanges=False)
             excel.Quit()
-            # e = traceback.format_exc()
             self.show_message(str(e))
 
 
