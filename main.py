@@ -6,15 +6,16 @@ from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox, QPushButton
 from PyQt5.QtCore import QSettings
 from gui import Ui_MyWindow
 import glob
-import time
 import pandas as pd
-
 
 import chromedriver_autoinstaller
 
 class MyWindow(QMainWindow, Ui_MyWindow):
     xlsx_path = ""
     driver = None
+    room = ""
+    new = None
+    printer_name = ""
     download_folder = os.path.expanduser("~/Downloads")
 
     def __init__(self):
@@ -31,24 +32,10 @@ class MyWindow(QMainWindow, Ui_MyWindow):
             pass
 
     def get_xls(self):
-        wait_time = 5
-        while wait_time > 0 :
-            files = glob.glob(os.path.join(self.download_folder, '*'))
-            files.sort(key=os.path.getctime, reverse=True)
-
-            if files:
-                most_recent_file = files[0]
-                file_extension = os.path.splitext(most_recent_file)[-1]
-                
-                if file_extension == '.xls' and 'download' not in os.path.basename(most_recent_file):
-                    self.xlsx_path = most_recent_file
-                    break
-            else:
-                time.sleep(1)
-                wait_time -= 1
-
-        if self.xlsx_path == "":
-            self.show_message("다운로드된 .xls 파일을 찾을 수 없거나 대기 시간을 초과했습니다.")
+        pattern = "제공승인목록*.xls"
+        files = glob.glob(os.path.join(self.download_folder, pattern ))
+        files.sort(key=os.path.getctime, reverse=True)
+        self.xlsx_path = files[0]
 
     def populate_printer_list(self):
         printers = [printer[2] for printer in win32print.EnumPrinters(2)]
@@ -99,85 +86,88 @@ class MyWindow(QMainWindow, Ui_MyWindow):
         msg_box.exec_()
 
     def print_excel_file(self):
-        try :
-            self.print_button.setDisabled(True)
+        self.print_button.setDisabled(True)
+        self.get_xls()
+        print(self.xlsx_path)
+
+        if self.xlsx_path == "":
+            self.show_message("다운로드된 .xls 파일을 찾을 수 없습니다.")
+            return
+
+        rooms = self.room_text_label.text()
+        self.room = str(rooms.split())
+        self.new = int(self.book_num_text_label.text())
+        self.printer_name = self.printer_combo.currentText()
+
+        if self.room == "" or self.new == None :
+            self.show_message("옵션을 다시 확인해 주십시오.")
+            return
+        if self.printer_name == "":
+            self.show_message("프린터를 찾을 수 없습니다.")
+            return
+
+        data = pd.read_excel(self.xlsx_path, sheet_name='전체', skiprows=2)
+        subset = data.iloc[:, 3:7]
+        subset = subset[subset.iloc[:, 3].astype(str).str.contains(self.room, na=False)]
+        subset = subset.iloc[:, :-1]
+        subset = subset.sort_values(by=subset.columns[2])
+
+        self.xlsx_path = self.download_folder + "\\print_.xlsx"
+        if os.path.exists(self.xlsx_path):
+            os.remove(self.xlsx_path)
+        subset.to_excel(self.xlsx_path, index=False)
+        
+        excel = win32com.client.Dispatch("Excel.Application")
+        excel.Visible = False
+        excel.DisplayAlerts = False
+        workbook = excel.Workbooks.Open(self.xlsx_path)
+        worksheet = workbook.Worksheets[0]
+
+        current_row = 2  # 현재 출력 중인 행
+        last_row = 2
+        total_rows = worksheet.UsedRange.Rows.Count+1
+
+        for row in range(2, total_rows):
+            rowA = worksheet.Cells(row, 1).Value
+            cell_new_value = int(rowA[2:])
             
-            try:
-                self.get_xls()
-            except:
-                self.print_button.setDisabled(False)
-                return
+            for column_index in range(1, 3):
+                cell = worksheet.Cells(row, column_index)
+                if cell_new_value >= self.new :
+                    cell.Font.Color = 255
 
-            rooms = self.room_text_label.text()
-            room = str(rooms.split())
-            new = int(self.book_num_text_label.text())
-            printer_name = self.printer_combo.currentText()
+        worksheet.Cells.Font.Size = 20
+        worksheet.Rows.AutoFit()
+        worksheet.Columns.AutoFit()
+        worksheet.PageSetup.Orientation = 2
+        worksheet.PageSetup.PaperSize = 9
+        worksheet.PageSetup.FitToPagesWide = 1
+        worksheet.PageSetup.FitToPagesTall = False
+        worksheet.PageSetup.Zoom = False
+        worksheet.PageSetup.LeftMargin = 0.2
+        worksheet.PageSetup.RightMargin = 0.2
+        worksheet.PageSetup.TopMargin = 0.2
+        worksheet.PageSetup.BottomMargin = 0.2
 
-            data = pd.read_excel(self.xlsx_path, sheet_name='전체', skiprows=3)
-            subset = data.iloc[:, 3:7]
-            subset = subset[subset.iloc[:, 3].astype(str).str.contains(room, na=False)]
-            subset = subset.iloc[:, :-1]
-            subset = subset.sort_values(by=subset.columns[2])
-            self.xlsx_path = self.download_folder + "\\print_.xlsx"
-            if os.path.exists(self.xlsx_path):
-                os.remove(self.xlsx_path)
-            subset.to_excel(self.xlsx_path, index=False)
-            
-            excel = win32com.client.Dispatch("Excel.Application")
-            excel.Visible = False
-            excel.DisplayAlerts = False
-            workbook = excel.Workbooks.Open(self.xlsx_path)
-            worksheet = workbook.Worksheets[0]
+        while True :
+            if current_row == total_rows-1 :
+                print_range = worksheet.Range(worksheet.Cells(last_row, 1), worksheet.Cells(current_row, 3))
+                print_range.PrintOut(ActivePrinter=self.printer_name)
+                break
 
-            current_row = 1  # 현재 출력 중인 행
-            last_row = 1
-            total_rows = worksheet.UsedRange.Rows.Count+1
+            if current_row % 20 == 0:
+                print_range = worksheet.Range(worksheet.Cells(last_row, 1), worksheet.Cells(current_row, 3))
+                last_row = current_row
+                print_range.PrintOut(ActivePrinter=self.printer_name)
 
-            for row in range(1, total_rows):
-                rowA = worksheet.Cells(row, 1).Value
-                cell_new_value = int(rowA[2:])
-                
-                for column_index in range(1, 3):
-                    cell = worksheet.Cells(row, column_index)
-                    if cell_new_value >= new :
-                        cell.Font.Color = 255
+            current_row += 1
 
-            worksheet.Cells.Font.Size = 20
-            worksheet.Rows.AutoFit()
-            worksheet.Columns.AutoFit()
-            worksheet.PageSetup.Orientation = 2
-            worksheet.PageSetup.PaperSize = 9
-            worksheet.PageSetup.FitToPagesWide = 1
-            worksheet.PageSetup.FitToPagesTall = False
-            worksheet.PageSetup.Zoom = False
-            worksheet.PageSetup.LeftMargin = 0.2
-            worksheet.PageSetup.RightMargin = 0.2
-            worksheet.PageSetup.TopMargin = 0.2
-            worksheet.PageSetup.BottomMargin = 0.2
+        os.remove(self.xlsx_path)
 
-            while True :
-                if current_row == total_rows-1 :
-                    print_range = worksheet.Range(worksheet.Cells(last_row, 1), worksheet.Cells(current_row, 3))
-                    print_range.PrintOut(ActivePrinter=printer_name)
-                    break
-
-                if current_row % 20 == 0:
-                    print_range = worksheet.Range(worksheet.Cells(last_row, 1), worksheet.Cells(current_row, 3))
-                    last_row = current_row
-                    print_range.PrintOut(ActivePrinter=printer_name)
-
-                current_row += 1
-
-            workbook.Close(SaveChanges=False)
-            excel.Quit()
-            self.show_message("작업이 완료되었습니다.")
-            self.print_button.setDisabled(False)
-        except Exception as e:
-            self.print_button.setDisabled(False)
-            workbook.Close(SaveChanges=False)
-            excel.Quit()
-            self.show_message(str(e))
-
+        workbook.Close(SaveChanges=False)
+        excel.Quit()
+        self.show_message("작업이 완료되었습니다.")
+        self.print_button.setDisabled(False)
 
 if __name__ == '__main__':
     MyApp = QApplication(sys.argv)
