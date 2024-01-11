@@ -7,13 +7,14 @@ from PyQt5.QtCore import QSettings
 from gui import Ui_MyWindow
 import glob
 import pandas as pd
-
+import time
+import re
 import chromedriver_autoinstaller
 
 class MyWindow(QMainWindow, Ui_MyWindow):
     xlsx_path = ""
     driver = None
-    room = ""
+    rooms = ""
     new = None
     printer_name = ""
     download_folder = os.path.expanduser("~/Downloads")
@@ -94,12 +95,11 @@ class MyWindow(QMainWindow, Ui_MyWindow):
             self.show_message("다운로드된 .xls 파일을 찾을 수 없습니다.")
             return
 
-        rooms = self.room_text_label.text()
-        self.room = str(rooms.split())
+        self.rooms = (self.room_text_label.text().split())
         self.new = int(self.book_num_text_label.text())
         self.printer_name = self.printer_combo.currentText()
 
-        if self.room == "" or self.new == None :
+        if self.rooms == None or self.new == None :
             self.show_message("옵션을 다시 확인해 주십시오.")
             return
         if self.printer_name == "":
@@ -107,8 +107,9 @@ class MyWindow(QMainWindow, Ui_MyWindow):
             return
 
         data = pd.read_excel(self.xlsx_path, sheet_name='전체', skiprows=2)
+        pattern = '|'.join(self.rooms)
         subset = data.iloc[:, 3:7]
-        subset = subset[subset.iloc[:, 3].astype(str).str.contains(self.room, na=False)]
+        subset = subset[subset.iloc[:, 3].astype(str).str.contains(pattern, na=False)]
         subset = subset.iloc[:, :-1]
         subset = subset.sort_values(by=subset.columns[2])
 
@@ -162,11 +163,10 @@ class MyWindow(QMainWindow, Ui_MyWindow):
 
             current_row += 1
 
-        os.remove(self.xlsx_path)
-
         workbook.Close(SaveChanges=False)
         excel.Quit()
         self.show_message("작업이 완료되었습니다.")
+        os.remove(self.xlsx_path)
         self.print_button.setDisabled(False)
 
 if __name__ == '__main__':
