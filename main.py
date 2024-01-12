@@ -7,8 +7,6 @@ from PyQt5.QtCore import QSettings
 from gui import Ui_MyWindow
 import glob
 import pandas as pd
-import time
-import re
 import chromedriver_autoinstaller
 
 class MyWindow(QMainWindow, Ui_MyWindow):
