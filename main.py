@@ -89,7 +89,6 @@ class MyWindow(QMainWindow, Ui_MyWindow):
     def print_excel_file(self):
         self.print_button.setDisabled(True)
         self.get_xls()
-        print(self.xlsx_path)
 
         if self.xlsx_path == "":
             self.show_message("다운로드된 .xls 파일을 찾을 수 없습니다.")
